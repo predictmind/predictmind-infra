@@ -29,14 +29,29 @@ docker compose up --build
 
 This starts every service plus PostgreSQL (TimescaleDB), Redis, and MinIO. The web app is at <http://localhost:3000>, the gateway at <http://localhost:3001/api/v1>.
 
-## AWS deployment (Terraform)
+## Deployment targets (portable, no lock-in)
 
-The `terraform/aws` stack provisions an AWS-native, container-first topology:
+PredictMind is **cloud-agnostic**: every service is an OCI container that speaks portable contracts (PostgreSQL wire protocol, Redis protocol, S3-compatible storage). The same images run on any of these — pick best/cheapest-of-breed (see [System Architecture §18](https://github.com/predictmind/app/blob/main/docs/04-system-architecture.md)):
+
+| Target | Notes |
+| --- | --- |
+| **Docker Compose** (this repo) | Portable baseline — local dev, demos, single-host prod |
+| **AWS ECS Fargate** (`terraform/aws`) | One managed reference target |
+| **Kubernetes** (EKS/GKE/AKS/k3s) | For scale / multi-cloud — add `k8s/` manifests or `terraform/<provider>` |
+| **Fly.io / Render / Railway** | Cheap managed containers |
+
+Data/infra building blocks are swappable: Postgres (Neon/Supabase/Timescale Cloud/RDS/self-host), Redis (Upstash/ElastiCache/self-host), object storage (Cloudflare R2/Backblaze B2/S3/MinIO), observability (self-hosted Grafana stack or Grafana Cloud), CI (GitHub Actions or Jenkins). Services receive these via environment variables only — switching providers is config, not code.
+
+## AWS reference deployment (Terraform)
+
+The `terraform/aws` stack is **one reference target** showing an AWS-native, container-first topology:
 
 - **VPC** — public/private subnets across 2 AZs + NAT.
 - **ECS Fargate** — one service per container; public services (gateway, web) behind an **ALB**, internal services via **Cloud Map** service discovery.
 - **ECR** — one image repository per service (scan-on-push).
 - **RDS PostgreSQL 17** + **ElastiCache Redis** + **S3** artifacts bucket.
+
+To target another cloud, add a sibling directory (e.g. `terraform/gcp`, `terraform/hetzner`) implementing the same roles; the service images and `docker-compose.yml` stay identical.
 
 ```bash
 cd terraform/aws
