@@ -1,7 +1,7 @@
 # VPC with public + private subnets across 2 AZs and a NAT gateway.
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 5.0"
+  version = "~> 6.6"
 
   name = "${local.name}-vpc"
   cidr = var.vpc_cidr
