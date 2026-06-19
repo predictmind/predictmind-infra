@@ -1,0 +1,152 @@
+# PredictMind — local development stack.
+#
+# Brings up all microservices, the gateway, web, ai, and the data stores.
+# Service source lives in sibling repos; clone them next to this repo:
+#
+#   predictmind-gateway, predictmind-auth-service, predictmind-market-service,
+#   predictmind-news-service, predictmind-strategy-service,
+#   predictmind-backtest-service, predictmind-paper-service,
+#   predictmind-reporting-service, predictmind-web, predictmind-ai
+#
+# Usage:  docker compose up --build
+
+name: predictmind
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg17
+    environment:
+      POSTGRES_USER: predictmind
+      POSTGRES_PASSWORD: predictmind
+      POSTGRES_DB: predictmind
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U predictmind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: predictmind
+      MINIO_ROOT_PASSWORD: predictmind
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+  gateway:
+    build: ../predictmind-gateway
+    ports:
+      - "3001:3001"
+    environment:
+      AUTH_SERVICE_URL: http://auth:3002
+      MARKET_SERVICE_URL: http://market:3003
+      NEWS_SERVICE_URL: http://news:3004
+      STRATEGY_SERVICE_URL: http://strategy:3005
+      BACKTEST_SERVICE_URL: http://backtest:3006
+      PAPER_SERVICE_URL: http://paper:3007
+      REPORTING_SERVICE_URL: http://reporting:3008
+    depends_on:
+      - auth
+      - market
+      - news
+      - strategy
+      - backtest
+      - paper
+      - reporting
+
+  auth:
+    build: ../predictmind-auth-service
+    environment:
+      PORT: 3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  market:
+    build: ../predictmind-market-service
+    environment:
+      PORT: 3003
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  news:
+    build: ../predictmind-news-service
+    environment:
+      PORT: 3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  strategy:
+    build: ../predictmind-strategy-service
+    environment:
+      PORT: 3005
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backtest:
+    build: ../predictmind-backtest-service
+    environment:
+      PORT: 3006
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  paper:
+    build: ../predictmind-paper-service
+    environment:
+      PORT: 3007
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  reporting:
+    build: ../predictmind-reporting-service
+    environment:
+      PORT: 3008
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  ai:
+    build: ../predictmind-ai
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build: ../predictmind-web
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    depends_on:
+      - gateway
+
+volumes:
+  pgdata:
+  miniodata:
