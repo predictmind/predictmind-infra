@@ -3,7 +3,7 @@
 # time-series at scale consider Timescale Cloud and point the services at it.
 module "db" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "~> 6.0"
+  version = "~> 7.2"
 
   identifier = "${local.name}-pg"
 
