@@ -1,14 +1,22 @@
 # PredictMind — local development stack.
 #
-# Brings up all microservices, the gateway, web, ai, and the data stores.
+# Brings up all microservices, the gateway, web, ai, and the data stores,
+# each as its own image + container on a shared Docker network. Services reach
+# each other and the data stores by service name (e.g. host "postgres"), never
+# "localhost" — inside a container "localhost" means the container itself.
+#
 # Service source lives in sibling repos; clone them next to this repo:
 #
-#   predictmind-gateway, predictmind-auth-service, predictmind-market-service,
+#   predictmind-api (gateway), predictmind-auth-service, predictmind-market-service,
 #   predictmind-news-service, predictmind-strategy-service,
 #   predictmind-backtest-service, predictmind-paper-service,
 #   predictmind-reporting-service, predictmind-web, predictmind-ai
 #
-# Usage:  docker compose up --build
+# The secrets below are LOCAL DEV ONLY placeholders — never real credentials.
+#
+# Usage:
+#   docker compose up --build                 # everything
+#   docker compose up --build postgres market # just what you need
 
 name: predictmind
 
@@ -52,10 +60,12 @@ services:
       - miniodata:/data
 
   gateway:
-    build: ../predictmind-gateway
+    build: ../predictmind-api
     ports:
       - "3001:3001"
     environment:
+      PORT: 3001
+      JWT_ACCESS_SECRET: local-dev-access-secret-not-for-production
       AUTH_SERVICE_URL: http://auth:3002
       MARKET_SERVICE_URL: http://market:3003
       NEWS_SERVICE_URL: http://news:3004
@@ -74,8 +84,16 @@ services:
 
   auth:
     build: ../predictmind-auth-service
+    ports:
+      - "3002:3002"
     environment:
       PORT: 3002
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=auth
+      JWT_ACCESS_SECRET: local-dev-access-secret-not-for-production
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_SECRET: local-dev-refresh-secret-not-for-production
+      JWT_REFRESH_TTL: 30d
+      RESET_TOKEN_TTL: 1h
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,48 +102,69 @@ services:
 
   market:
     build: ../predictmind-market-service
+    ports:
+      - "3003:3003"
     environment:
       PORT: 3003
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=market
+      BINANCE_API_URL: https://api.binance.com
+      SYNC_ENABLED: "true"
+      SYNC_TIMEFRAMES: 1h
     depends_on:
       postgres:
         condition: service_healthy
 
   news:
     build: ../predictmind-news-service
+    ports:
+      - "3004:3004"
     environment:
       PORT: 3004
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=news
     depends_on:
       postgres:
         condition: service_healthy
 
   strategy:
     build: ../predictmind-strategy-service
+    ports:
+      - "3005:3005"
     environment:
       PORT: 3005
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=strategy
     depends_on:
       postgres:
         condition: service_healthy
 
   backtest:
     build: ../predictmind-backtest-service
+    ports:
+      - "3006:3006"
     environment:
       PORT: 3006
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=backtest
     depends_on:
       postgres:
         condition: service_healthy
 
   paper:
     build: ../predictmind-paper-service
+    ports:
+      - "3007:3007"
     environment:
       PORT: 3007
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=paper
     depends_on:
       postgres:
         condition: service_healthy
 
   reporting:
     build: ../predictmind-reporting-service
+    ports:
+      - "3008:3008"
     environment:
       PORT: 3008
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=reporting
     depends_on:
       postgres:
         condition: service_healthy
@@ -134,6 +173,8 @@ services:
     build: ../predictmind-ai
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=ai
     depends_on:
       postgres:
         condition: service_healthy
