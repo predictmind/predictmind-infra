@@ -148,9 +148,12 @@ services:
     environment:
       PORT: 3006
       DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=backtest
+      MARKET_SERVICE_URL: http://market:3003
     depends_on:
       postgres:
         condition: service_healthy
+      market:
+        condition: service_started
 
   paper:
     build: ../predictmind-paper-service
