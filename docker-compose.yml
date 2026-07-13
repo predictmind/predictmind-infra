@@ -121,9 +121,14 @@ services:
     environment:
       PORT: 3004
       DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=news
+      COLLECT_ENABLED: "true"
+      AI_SERVICE_URL: http://ai:8000
+      AI_ANALYSIS_ENABLED: "true"
     depends_on:
       postgres:
         condition: service_healthy
+      ai:
+        condition: service_started
 
   strategy:
     build: ../predictmind-strategy-service
