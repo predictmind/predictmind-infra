@@ -165,9 +165,13 @@ services:
     environment:
       PORT: 3007
       DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=paper
+      MARKET_SERVICE_URL: http://market:3003
+      PRICE_TIMEFRAME: 1h
     depends_on:
       postgres:
         condition: service_healthy
+      market:
+        condition: service_started
 
   reporting:
     build: ../predictmind-reporting-service
