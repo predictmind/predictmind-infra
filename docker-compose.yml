@@ -137,9 +137,12 @@ services:
     environment:
       PORT: 3005
       DATABASE_URL: postgresql://predictmind:predictmind@postgres:5432/predictmind?schema=strategy
+      BACKTEST_SERVICE_URL: http://backtest:3006
     depends_on:
       postgres:
         condition: service_healthy
+      backtest:
+        condition: service_started
 
   backtest:
     build: ../predictmind-backtest-service
